@@ -1,0 +1,677 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID" },
+        "displayName": { "type": "string", "description": "The user's full name" },
+        "email": { "type": "string", "description": "The user's email address" },
+        "role": { "type": "string", "enum": ["Admin", "Leader", "Student", "Alumni"], "description": "The user's role in the system" },
+        "gender": { "type": "string", "enum": ["Sir", "Madam"], "description": "User gender" },
+        "rollNumber": { "type": "string", "description": "Student roll or registration number" },
+        "standard": { "type": "string", "description": "Student academic standard" },
+        "houseTeam": { "type": "string", "enum": ["GOOD PIONEER", "GOOD PATRON", "GOOD SAVIOUR", "GOOD SHEPHERD"], "description": "Student house team" },
+        "leaderPosition": { "type": "string", "enum": ["SECRETARY/ P.M", "SECRETARY / C.M", "EDUCATIONAL MINISTER", "FINANCE MINISTER", "DEFENCE MINISTER", "SPEAKER"], "description": "Leader specific role or position" },
+        "bio": { "type": "string", "description": "A short biography" },
+        "photoURL": { "type": "string", "description": "URL to the user's profile photo" },
+        "isOnline": { "type": "boolean", "description": "Whether the user is currently online" },
+        "isVerified": { "type": "boolean", "description": "Whether the user is verified (especially for Alumni)" },
+        "isDeleted": { "type": "boolean", "description": "Whether the user account has been deleted/deactivated by Admin" },
+        "pin": { "type": "string", "description": "4-digit security PIN for fast switching" },
+        "totalPoints": { "type": "number", "description": "Total points earned by the user" },
+        "alumniData": {
+          "type": "object",
+          "properties": {
+            "pointsGiftedToday": { "type": "number" },
+            "lastGiftDate": { "type": "string", "format": "date" }
+          }
+        },
+        "leaderData": {
+          "type": "object",
+          "properties": {
+            "pointsDistributed": { "type": "number" },
+            "telecastPermissions": { "type": "boolean" },
+            "houseRank": { "type": "number" },
+            "leadershipImpactScore": { "type": "number" },
+            "distinctStudentsHelped": { "type": "number" },
+            "activityStreak": { "type": "number" },
+            "lastCommandCenterCheck": { "type": "string", "format": "date" },
+            "telecastEngagementPoints": { "type": "number" }
+          }
+        },
+        "cards": {
+          "type": "object",
+          "properties": {
+            "white": { "type": "number" },
+            "yellow": { "type": "number" },
+            "blue": { "type": "number" },
+            "green": { "type": "number" },
+            "pink": { "type": "number" }
+          },
+          "description": "Student card counts"
+        },
+        "redCards": { "type": "number", "description": "Count of disciplinary red cards" },
+        "lastActive": { "type": "string", "format": "date-time", "description": "Last activity timestamp" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the profile was last updated" },
+        "batchYear": { "type": "string", "description": "The student's batch year" },
+        "lastNotificationReadAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the user last read notifications" },
+        "legacyBadges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "year": { "type": "string" },
+              "totalPoints": { "type": "number" },
+              "cards": {
+                "type": "object",
+                "properties": {
+                  "white": { "type": "number" },
+                  "yellow": { "type": "number" },
+                  "blue": { "type": "number" },
+                  "green": { "type": "number" },
+                  "pink": { "type": "number" }
+                }
+              }
+            }
+          },
+          "description": "Archived achievements from previous years"
+        }
+      },
+      "required": ["uid", "displayName", "email", "role"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "School announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["General", "Academic", "Event", "Urgent"] },
+        "targetAudience": { "type": "string" },
+        "message": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["Published", "Draft"] },
+        "authorName": { "type": "string" },
+        "authorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "targetAudience", "message", "status", "authorId"]
+    },
+    "PointEntry": {
+      "title": "Point Entry",
+      "description": "A record of points awarded or deducted",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "points": { "type": "number" },
+        "reason": { "type": "string" },
+        "category": { "type": "string", "enum": ["Academic", "Sports", "Behavior", "Other"] },
+        "house": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "isAlert": { "type": "boolean" }
+      }
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "Daily attendance record for a student",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "standard": { "type": "string" },
+        "house": { "type": "string" },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Late", "Excused"] },
+        "date": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "TestResult": {
+      "title": "Test Result",
+      "description": "Student test result",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "standard": { "type": "string" },
+        "testName": { "type": "string" },
+        "subject": { "type": "string" },
+        "score": { "type": "number" },
+        "totalScore": { "type": "number" },
+        "percentage": { "type": "number" },
+        "grade": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "LiveClass": {
+      "title": "Live Class",
+      "description": "Scheduled or live class session",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "standard": { "type": "string" },
+        "subject": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "status": { "type": "string", "enum": ["Scheduled", "Live", "Ended"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Quiz session metadata",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "standard": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Completed"] },
+        "participants": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Academic course details",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "subject": { "type": "string" },
+        "standard": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "prerequisites": { "type": "array", "items": { "type": "string" } },
+        "learningObjectives": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "description": "Course assignment",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "points": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "Student course progress",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "completedAssignments": { "type": "array", "items": { "type": "string" } },
+        "grade": { "type": "string" },
+        "lastAccessed": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AcademicContent": {
+      "title": "Academic Content",
+      "description": "Educational materials like videos, notes, and quizzes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["Video", "Notes", "Quiz"] },
+        "url": { "type": "string" },
+        "standard": { "type": "string" },
+        "subject": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "status": { "type": "string", "enum": ["uploading", "ready", "error"] },
+        "uploadProgress": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "standard", "subject", "authorId"]
+    },
+    "ReportCard": {
+      "title": "Report Card",
+      "description": "Student academic report card",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "standard": { "type": "string" },
+        "house": { "type": "string" },
+        "overallGrade": { "type": "string" },
+        "subjects": { "type": "object" },
+        "skills": { "type": "object" },
+        "attendance": { "type": "object" },
+        "quizMarks": { "type": "string" },
+        "housePerformance": { "type": "number" },
+        "summary": { "type": "string" },
+        "remarks": { "type": "string" },
+        "recommendations": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "studentName", "standard"]
+    },
+    "InstitutionEvent": {
+      "title": "Institution Event",
+      "description": "A video record of an institution event",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "status": { "type": "string", "enum": ["uploading", "ready", "error"] },
+        "uploadProgress": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "videoUrl", "authorId"]
+    },
+    "LeadershipLegacyEntry": {
+      "title": "Leadership Legacy Entry",
+      "description": "Historical record of a verified leader",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "house": { "type": "string" },
+        "title": { "type": "string" },
+        "year": { "type": "string" },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "verifiedBy": { "type": "string" }
+      },
+      "required": ["userId", "userName", "house", "title", "year"]
+    },
+    "LiveTelecast": {
+      "title": "Live Telecast",
+      "description": "Information about a live telecast session",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["Live", "Ended"] },
+        "url": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "startedBy": { "type": "string" },
+        "viewerCount": { "type": "number" }
+      },
+      "required": ["title", "status", "url", "startedBy"]
+    },
+    "LiveReaction": {
+      "title": "Live Reaction",
+      "description": "A reaction (heart, clap, etc.) in a live telecast",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["heart", "clap", "like", "wow"] },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "LiveChatMessage": {
+      "title": "Live Chat Message",
+      "description": "A message in a live telecast chat",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "DailyQuiz": {
+      "title": "Daily Quiz",
+      "description": "A single question daily quiz",
+      "type": "object",
+      "properties": {
+        "subject": { "type": "string" },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "number" },
+        "explanation": { "type": "string" },
+        "standard": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["subject", "question", "options", "correctAnswer", "standard", "authorId"]
+    },
+    "DailyQuizResult": {
+      "title": "Daily Quiz Result",
+      "description": "A student's answer to a daily quiz",
+      "type": "object",
+      "properties": {
+        "quizId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "selectedAnswer": { "type": "number" },
+        "isCorrect": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quizId", "studentId", "selectedAnswer", "isCorrect"]
+    },
+    "DiscussionMessage": {
+      "title": "Discussion Message",
+      "description": "A message in a class discussion board",
+      "type": "object",
+      "properties": {
+        "standard": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["standard", "userId", "userName", "text"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A user notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Target user ID (optional for global/targeted)" },
+        "target": { "type": "string", "description": "Target audience (all, standard, or house)" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["Course", "Event", "Live", "Discussion", "General", "Class", "Reward", "System", "Upload"] },
+        "link": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "type"]
+    },
+    "LivePoll": {
+      "title": "Live Poll",
+      "description": "A poll within a live class",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "votes": { "type": "object", "description": "Map of userId to option index" },
+        "status": { "type": "string", "enum": ["Active", "Closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["question", "options", "votes", "status"]
+    },
+    "RoomParticipant": {
+      "title": "Room Participant",
+      "description": "A participant in a live class room",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "isMuted": { "type": "boolean" },
+        "isVideoOff": { "type": "boolean" },
+        "isHandRaised": { "type": "boolean" },
+        "isSpeaking": { "type": "boolean" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "role", "joinedAt"]
+    },
+    "RewardHistory": {
+      "title": "Reward History",
+      "description": "A record of cards or points awarded",
+      "type": "object",
+      "properties": {
+        "recipientId": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "type": { "type": "string", "enum": ["card", "points"] },
+        "value": { "type": "string" },
+        "reason": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recipientId", "senderId", "type", "value", "timestamp"]
+    },
+    "HouseStats": {
+      "title": "House Stats",
+      "description": "Aggregated statistics for a house",
+      "type": "object",
+      "properties": {
+        "totalPoints": { "type": "number" },
+        "cardCounts": {
+          "type": "object",
+          "properties": {
+            "white": { "type": "number" },
+            "yellow": { "type": "number" },
+            "blue": { "type": "number" },
+            "green": { "type": "number" },
+            "pink": { "type": "number" }
+          }
+        },
+        "redCardCount": { "type": "number", "description": "Total disciplinary red cards for the house" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ArchiveBatch": {
+      "title": "Archive Batch",
+      "description": "Metadata for an archived year batch",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "yearLabel": { "type": "string" },
+        "archivedAt": { "type": "string", "format": "date-time" },
+        "archivedBy": { "type": "string" },
+        "archivedByName": { "type": "string" },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalPoints": { "type": "number" },
+            "winningHouse": { "type": "string" },
+            "totalCards": { "type": "number" }
+          }
+        }
+      }
+    },
+    "HallOfFameEntry": {
+      "title": "Hall of Fame Entry",
+      "description": "A record of a monthly or yearly winner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "period": { "type": "string" },
+        "winnerHouse": { "type": "string" },
+        "studentOfMonth": { "type": "string" },
+        "studentId": { "type": "string" },
+        "totalPoints": { "type": "number" },
+        "houseColor": { "type": "string" },
+        "type": { "type": "string", "enum": ["Monthly", "Yearly"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PortfolioEntry": {
+      "title": "Portfolio Entry",
+      "description": "A record of a student's achievement or report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["Progress Report", "Quiz Award", "Leadership Milestone", "Achievement"] },
+        "date": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "totalPointsAtTime": { "type": "number" },
+        "badgesEarned": { "type": "array", "items": { "type": "string" } },
+        "leadershipStats": {
+          "type": "object",
+          "properties": {
+            "pointsDistributed": { "type": "number" },
+            "houseRankAtTime": { "type": "number" }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "type", "date", "totalPointsAtTime", "timestamp"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "A live session (class or telecast)",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["class", "telecast"] },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "title": { "type": "string" },
+        "channelName": { "type": "string" },
+        "startedBy": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "status", "title", "channelName", "startedBy"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles collection"
+    },
+    "/users/{uid}/helped_students/{recipientId}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "description": "Tracks distinct students helped by a leader"
+    },
+    "/reward_history/{id}": {
+      "schema": "RewardHistory",
+      "description": "Global reward history"
+    },
+    "/announcements/{id}": {
+      "schema": "Announcement",
+      "description": "Announcements collection"
+    },
+    "/points/{id}": {
+      "schema": "PointEntry",
+      "description": "House points entries"
+    },
+    "/attendance/{id}": {
+      "schema": "AttendanceRecord",
+      "description": "Daily attendance records"
+    },
+    "/test_results/{id}": {
+      "schema": "TestResult",
+      "description": "Student test results"
+    },
+    "/live_classes/{id}": {
+      "schema": "LiveClass",
+      "description": "Live class sessions"
+    },
+    "/live_classes/{classId}/polls/{pollId}": {
+      "schema": "LivePoll",
+      "description": "Polls within a live class"
+    },
+    "/live_classes/{classId}/participants/{participantId}": {
+      "schema": "RoomParticipant",
+      "description": "Participants in a live class"
+    },
+    "/quizzes/{id}": {
+      "schema": "Quiz",
+      "description": "Quiz sessions"
+    },
+    "/courses/{id}": {
+      "schema": "Course",
+      "description": "Academic courses"
+    },
+    "/assignments/{id}": {
+      "schema": "Assignment",
+      "description": "Course assignments"
+    },
+    "/progress/{id}": {
+      "schema": "Progress",
+      "description": "Student course progress"
+    },
+    "/academic_content/{id}": {
+      "schema": "AcademicContent",
+      "description": "Academic content collection"
+    },
+    "/report_cards/{id}": {
+      "schema": "ReportCard",
+      "description": "Student report cards collection"
+    },
+    "/institution_events/{id}": {
+      "schema": "InstitutionEvent",
+      "description": "Collection of institution event videos"
+    },
+    "/leadership_legacy/{id}": {
+      "schema": "LeadershipLegacyEntry",
+      "description": "Historical records of verified leaders"
+    },
+    "/live_telecasts/{id}": {
+      "schema": "LiveTelecast",
+      "description": "Collection of live telecast sessions"
+    },
+    "/live_telecasts/{telecastId}/chat/{messageId}": {
+      "schema": "LiveChatMessage",
+      "description": "Chat messages for a live telecast"
+    },
+    "/live_telecasts/{telecastId}/reactions/{reactionId}": {
+      "schema": "LiveReaction",
+      "description": "Reactions for a live telecast"
+    },
+    "/dailyQuizzes/{id}": {
+      "schema": "DailyQuiz",
+      "description": "Collection of daily quizzes"
+    },
+    "/dailyQuizResults/{id}": {
+      "schema": "DailyQuizResult",
+      "description": "Collection of daily quiz results"
+    },
+    "/notifications/{id}": {
+      "schema": "Notification",
+      "description": "User notifications collection"
+    },
+    "/discussions/{id}": {
+      "schema": "DiscussionMessage",
+      "description": "Class discussion messages"
+    },
+    "/house_stats/{houseName}": {
+      "schema": "HouseStats",
+      "description": "Aggregated house statistics"
+    },
+    "/archives/{batchId}": {
+      "schema": "ArchiveBatch",
+      "description": "Archived batches metadata"
+    },
+    "/archives/{batchId}/house_stats/{houseName}": {
+      "schema": "HouseStats",
+      "description": "Archived house statistics for a specific batch"
+    },
+    "/hall_of_fame/{entryId}": {
+      "schema": "HallOfFameEntry",
+      "description": "Historical winners list"
+    },
+    "/portfolios/{id}": {
+      "schema": "PortfolioEntry",
+      "description": "Student achievement portfolios"
+    },
+    "/sessions/{id}": {
+      "schema": "Session",
+      "description": "Live sessions state"
+    },
+    "/sessions/{sessionId}/signaling/{id}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "signal": { "type": "string" },
+          "type": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "description": "WebRTC signaling messages"
+    }
+  }
+}

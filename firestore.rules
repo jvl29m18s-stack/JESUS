@@ -1,0 +1,368 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (required)
+    //   - role: string (required, enum: Admin, Leader, Student, Alumni)
+    //   - bio: string (optional)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: house_stats
+    // Document ID: {houseName}
+    // Fields:
+    //   - totalPoints: number (required)
+    //   - cardCounts: map (optional)
+    //   - lastUpdated: timestamp (optional)
+    //
+    // Collection: archives
+    // Document ID: {batchId}
+    // Fields:
+    //   - yearLabel: string (required)
+    //   - summary: map (required)
+    //   - archivedAt: timestamp (required)
+    //
+    // Collection: hall_of_fame
+    // Document ID: {entryId}
+    // Fields:
+    //   - period: string (required)
+    //   - winnerHouse: string (required)
+    //   - totalPoints: number (required)
+    //   - type: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isNotDeleted() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isDeleted', false) == false;
+    }
+
+    function isAuthorized() {
+      return isAuthenticated() && isNotDeleted();
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isSchoolEmail() {
+      // Allowing the default admin and anyone with the school domain
+      // In a real scenario, replace 'gmail.com' with the actual school domain
+      return request.auth.token.email.endsWith("@goodsamaritan.edu") || 
+             request.auth.token.email == "jvl29m18s@gmail.com";
+    }
+
+    function isDefaultAdmin() {
+      return isAuthenticated() && request.auth.token.email == "jvl29m18s@gmail.com";
+    }
+
+function isAdmin() {
+  return isAuthenticated() &&
+    (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+      (request.auth.token.email == "jvl29m18s@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+}
+
+    function isLeader() {
+      return isAuthorized() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader';
+    }
+
+    function isAlumni() {
+      return isAuthorized() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Alumni';
+    }
+
+    function isVerifiedAlumni() {
+      return isAlumni() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isVerified == true;
+    }
+
+    function isRecent(ts) {
+      return ts is timestamp && 
+             ts <= request.time && 
+             ts > request.time - duration.value(5, 'm');
+    }
+
+    match /test/{docId} {
+      allow read: if isAuthenticated();
+    }
+
+    function isUserAdmin() {
+      return isAdmin();
+    }
+
+    function isValidUser(data, userId) {
+      return data.uid == userId &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100)) &&
+             (!('email' in data) || (data.email is string && isValidEmail(data.email) && data.email.size() < 100)) &&
+             (!('role' in data) || (data.role in ['Admin', 'Leader', 'Student', 'Alumni']));
+    }
+
+    function isValidPreRegisteredUser(data, userId) {
+      return data.keys().hasAll(['displayName', 'email', 'role', 'createdAt', 'updatedAt', 'isPreRegistered']) &&
+             userId.matches("^temp_.*") &&
+             data.displayName is string &&
+             data.email is string &&
+             data.role in ['Admin', 'Leader', 'Student', 'Alumni'] &&
+             data.isPreRegistered == true;
+    }
+
+    function isValidDailyQuiz(data) {
+      return data.keys().hasAll(['subject', 'question', 'options', 'correctAnswer', 'standard', 'authorId', 'authorName', 'createdAt']) &&
+             data.subject is string &&
+             data.question is string &&
+             data.options is list && data.options.size() >= 2 &&
+             data.correctAnswer is int &&
+             data.standard is string &&
+             data.authorId == request.auth.uid &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidDailyQuizResult(data) {
+      return data.keys().hasAll(['quizId', 'studentId', 'studentName', 'selectedAnswer', 'isCorrect', 'timestamp']) &&
+             data.quizId is string &&
+             data.studentId == request.auth.uid &&
+             data.studentName is string &&
+             data.selectedAnswer is int &&
+             data.isCorrect is bool &&
+             data.timestamp is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthorized() && (
+        !exists(/databases/$(database)/documents/users/$(userId)) ||
+        resource.data.role != 'Student' ||
+        isAdmin() || isLeader() || isVerifiedAlumni() || isOwner(userId)
+      );
+      allow create: if (isOwner(userId) && isValidUser(request.resource.data, userId) && (request.resource.data.role != 'Admin' || isDefaultAdmin())) ||
+                     (isAdmin() && (isValidUser(request.resource.data, userId) || isValidPreRegisteredUser(request.resource.data, userId)));
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data, userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)) || 
+                     isAdmin() || 
+                     (isLeader() && resource.data.role != 'Admin' && isValidUser(request.resource.data, userId));
+      allow delete: if isAdmin() || (isOwner(userId) && userId.matches("^temp_.*"));
+
+      match /helped_students/{recipientId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isLeader();
+      }
+    }
+
+    match /reward_history/{historyId} {
+      allow read: if isAuthorized();
+      allow create: if isAdmin() || isLeader() || isVerifiedAlumni();
+    }
+
+    match /points/{pointId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update, delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin() || isLeader();
+    }
+
+    match /attendance/{recordId} {
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader' && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.standard == request.resource.data.standard)
+      );
+    }
+
+    match /test_results/{resultId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+    }
+
+    match /live_classes/{classId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+
+      match /participants/{participantId} {
+        allow read: if isAuthorized();
+        allow write: if isAuthorized() && (request.auth.uid == participantId || isAdmin());
+      }
+
+      match /polls/{pollId} {
+        allow read: if isAuthorized();
+        allow create: if isAdmin();
+        allow update: if isAuthorized() && (
+          isAdmin() || 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes']) &&
+           request.resource.data.votes.keys().hasAll(resource.data.votes.keys()))
+        );
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader');
+      allow delete: if isAuthorized() && (isAdmin() || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader' && resource.data.authorId == request.auth.uid));
+      allow update: if isAuthorized() && (isAdmin() || 
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader' && resource.data.authorId == request.auth.uid) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants']) && 
+                       request.resource.data.participants == resource.data.participants + 1));
+    }
+
+    match /courses/{courseId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+    }
+
+    match /progress/{progressId} {
+      allow read: if isAuthorized() && (request.auth.uid == resource.data.studentId || isAdmin());
+      allow create: if isAuthorized() && request.auth.uid == request.resource.data.studentId;
+      allow update: if isAuthorized() && request.auth.uid == resource.data.studentId && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if isAdmin();
+    }
+
+    match /academic_content/{contentId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && (isAdmin() || isLeader());
+      allow update: if isAuthorized() && (isAdmin() || (isLeader() && resource.data.authorId == request.auth.uid));
+      allow delete: if isAdmin() || (isLeader() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /report_cards/{cardId} {
+      allow read: if isAuthorized() && (request.auth.uid == resource.data.studentId || isAdmin() || isLeader());
+      allow write: if isAuthorized() && (isAdmin() || isLeader());
+    }
+
+    match /quizResults/{resultId} {
+      allow read: if isAuthorized() && (request.auth.uid == resource.data.studentId || isAdmin() || isLeader());
+      allow create: if isAuthorized() && request.auth.uid == request.resource.data.studentId;
+      allow update: if isAuthorized() && (
+        isAdmin() || 
+        (request.auth.uid == resource.data.studentId && resource.data.status == 'in-progress')
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /institution_events/{eventId} {
+      allow read: if isAuthorized();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && (resource.data.authorId == request.auth.uid || isDefaultAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /leadership_legacy/{legacyId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+    }
+
+    match /live_telecasts/{telecastId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin() || isLeader();
+
+      match /chat/{messageId} {
+        allow read: if isAuthorized();
+        allow create: if isAuthorized() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAdmin() || (isAuthorized() && resource.data.userId == request.auth.uid);
+      }
+
+      match /reactions/{reactionId} {
+        allow read: if isAuthorized();
+        allow create: if isAuthorized() && request.resource.data.userId == request.auth.uid;
+        allow delete: if isAuthorized() && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /dailyQuizzes/{quizId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader') && isValidDailyQuiz(request.resource.data);
+      allow update: if isAuthorized() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader') && isValidDailyQuiz(request.resource.data);
+      allow delete: if isAuthorized() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader');
+    }
+
+    match /dailyQuizResults/{resultId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && isValidDailyQuizResult(request.resource.data);
+      allow update, delete: if isAuthorized() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader');
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update: if isAuthorized() && (
+        (resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin() || (isAuthorized() && resource.data.userId == request.auth.uid);
+    }
+
+    match /discussions/{messageId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthorized() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin() || (isAuthorized() && resource.data.userId == request.auth.uid);
+    }
+
+    match /house_stats/{houseName} {
+      allow read: if isAuthorized();
+      allow create, update: if isAdmin() || isLeader();
+      allow delete: if isAdmin();
+    }
+
+    match /archives/{batchId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+
+      match /house_stats/{houseName} {
+        allow read: if isAuthorized();
+        allow write: if isAdmin();
+      }
+    }
+
+    match /hall_of_fame/{entryId} {
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
+    }
+
+    match /portfolios/{portfolioId} {
+      allow read: if isAuthorized() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthorized() && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isAuthorized() && isSchoolEmail();
+      allow write: if isAdmin();
+
+      match /signaling/{messageId} {
+        allow read: if isAuthorized() && isSchoolEmail();
+        allow create: if isAuthorized() && isSchoolEmail() && request.resource.data.from == request.auth.uid;
+        allow delete: if isAuthorized() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid || isAdmin());
+      }
+    }
+  }
+}

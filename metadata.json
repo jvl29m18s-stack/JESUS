@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: Good Samaritan Education",
+  "description": "A refined educational platform with real-time profile sync, house leadership roles, and an intelligent family switcher.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
